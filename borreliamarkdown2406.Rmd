@@ -1,0 +1,82 @@
+---
+title: "Borrelia Analysis 17.06"
+author: "Ferenci Tamás & Sulyok Mihály"
+date: '2018 június 17 '
+output: pdf_document
+---
+``````{r echo=TRUE, warnings=TRUE}
+
+library( lattice )
+
+setwd("D:/Rprojects/Lymenew")
+
+library(readr)
+
+
+
+X201317master <- read_delim("201317masterborr.csv", ";", escape_double = FALSE, col_types = cols(time = col_date(format = "%Y.%m.%d")), trim_ws = TRUE)
+View(X201317master)
+
+head( X201317master[ order( X201317master$borrgt, decreasing = TRUE ), ] )
+
+gts <- ts( X201317master$borrgt, start=c(2013, 24), end=c(2017, 24), frequency=52)
+rkts <- ts( log( X201317master$rki ), start=c(2013, 24), end=c(2017, 24), frequency=52)
+
+X2017master <- read_delim("201718borr.csv", ";", escape_double = FALSE, col_types = cols(time = col_date(format = "%Y.%m.%d")), trim_ws = TRUE)
+View(X2017master)
+
+gts17<-ts(X2017master$borrgt, start=c(2017, 25), end=c(2018, 21), frequency=52)
+rkts17<-ts( log( X2017master$rki ), start=c(2017, 25), end=c(2018, 21), frequency=52)
+
+xyplot( borrgt + rki ~ time, data = rbind( X201317master, X2017master ), type = "l",
+        xlab = "Time", ylab = "Weekly number/Relative search volume",
+        auto.key = list( text = c( "GT", "RKI" ), points = FALSE, lines = TRUE, columns = 2 ) )
+
+cor.test(gts, rkts, method= "kendall")
+
+acf( rkts, lag.max = 100 )
+acf( diff( rkts ), lag.max = 100 )
+acf( diff( rkts, 52 ), lag.max = 100 )
+acf( diff( diff( rkts, 52 ) ), lag.max = 100 )
+
+library( forecast )
+library(splines)
+
+fit <- auto.arima( rkts, trace = TRUE, approximation = FALSE )
+fit
+fc <- forecast( fit, h = length( gts17 ) )
+accuracy( fc )
+accuracy( fc, rkts17 )
+
+fitGT <- auto.arima( rkts, trace = TRUE, approximation = FALSE, xreg = bs( gts, knots = c( 25, 50 ), Boundary.knots = c( 0, 100 ) ) )
+
+
+fcGT<- forecast( fitGT, xreg = bs( gts17,  knots = c( 25, 50 ), Boundary.knots = c( 0, 100 ) ) )
+
+
+
+xyplot( bs( 0:100,  knots = c( 25, 50 ), Boundary.knots = c( 0, 100 ) )%*%coef( fitGT )[ 3:7 ]~(0:100), type = "l" )
+
+par( mfrow = c( 2, 1 ) )
+plot( fc )
+plot( fcGT )
+layout(1)
+plot( fc, col = "black", ylab = "Log-transformed number of cases", main = "Predictions" )
+lines( fcGT$mean, col = "red" )
+lines( rkts17, col = "black" )
+legend( "bottomleft", inset = 0.005, legend = c( "Optimal SARIMA", "Optimal SARIMA with Google Trends", "Actual" ),
+        fill = c( "blue", "red", "black" ), cex = 0.7, box.lty = 0, bg="transparent" )
+
+accuracy( fcGT )
+accuracy( fcGT, rkts17 )
+
+accuracy( fc, rkts17 )
+accuracy( fcGT, rkts17 )
+
+fitGT 
+tsdiag(fit)
+tsdiag(fitGT)
+a<-AIC( fit, fitGT ) 
+a
+dm.test( rkts17-fc$mean, rkts17-fcGT$mean ) 
+```
