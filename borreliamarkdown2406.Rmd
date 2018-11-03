@@ -32,7 +32,14 @@ xyplot( borrgt + rki ~ time, data = rbind( X201317master, X2017master ), type = 
         xlab = "Time", ylab = "Weekly number/Relative search volume",
         auto.key = list( text = c( "GT", "RKI" ), points = FALSE, lines = TRUE, columns = 2 ) )
 
-cor.test(gts, rkts, method= "kendall")
+corrdatauntransformed<- rbind( X201317master, X2017master )
+cor.test(corrdatauntransformed$borrgt, corrdatauntransformed$rki, method= "kendall")
+
+
+library(Hmisc)
+X201317master$Year<-format(X201317master$time,"%Y")
+print(summary(Year~borrgt+rki,data=X201317master,method="reverse"),prmsd = TRUE, digits = 1 )
+
 
 acf( rkts, lag.max = 100 )
 acf( diff( rkts ), lag.max = 100 )
